@@ -186,4 +186,4 @@ IANA publishes the live bootstrap registries at:
 
 ## License
 
-See `LICENSE`.
+See (LICENSE)[https://github.com/OsbornePro/rdap-cli/blob/main/LICENSE].
