@@ -2,9 +2,9 @@
  * rdap-cli - A lightweight RDAP-only command-line client
  *
  * Copyright (c) 2026 OsbornePro
- * Author: OsbornePro
+ * Author: Robert H. Osborne
  *
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  *
  * Project: https://github.com/OsbornePro/rdap-cli
  */
@@ -21,7 +21,7 @@
 #include <string.h>
 #include <strings.h>
 
-#define VERSION "0.3.1"
+#define VERSION "0.3.2"
 
 #define IANA_DNS  "https://data.iana.org/rdap/dns.json"
 #define IANA_IPV4 "https://data.iana.org/rdap/ipv4.json"
@@ -52,11 +52,13 @@ static void usage(FILE *out, const char *prog)
         "  %s example.com\n"
         "  %s 1.1.1.1\n"
         "  %s 2606:4700:4700::1111\n"
-        "  %s AS15169\n"
+        "  %s AS13335\n"
         "  %s --json example.com\n"
         "  %s --notices example.com\n"
         "  %s --links example.com\n"
         "  %s --follow example.com\n"
+        "  %s --full example.com\n"
+        "  %s --full --follow example.com\n"
         "  %s --json --follow example.com\n"
         "  %s --server example.com\n"
         "\n"
@@ -65,11 +67,12 @@ static void usage(FILE *out, const char *prog)
         "  -n, --notices    Include RDAP notices in human-readable output\n"
         "  -l, --links      Include RDAP links in human-readable output\n"
         "  -f, --follow     Follow a related registrar RDAP link when available\n"
+        "  -F, --full       Extended human-readable output; implies --notices and --links\n"
         "  -s, --server     Print the discovered authoritative RDAP base URL\n"
         "  -v, --verbose    Show bootstrap discovery details on stderr\n"
         "  -V, --version    Print version and exit\n"
         "  -h, --help       Show this help\n",
-        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
+        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
 }
 
 static size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
@@ -995,9 +998,317 @@ static void print_links(json_object *obj)
     print_link_array(links, "  ");
 }
 
+
+static void print_roles(json_object *entity, const char *indent)
+{
+    json_object *roles;
+
+    if (!json_object_object_get_ex(entity, "roles", &roles) ||
+        !json_object_is_type(roles, json_type_array) ||
+        json_object_array_length(roles) == 0)
+        return;
+
+    printf("%sRoles: ", indent);
+
+    for (size_t i = 0; i < json_object_array_length(roles); ++i) {
+        const char *role =
+            json_object_get_string(json_object_array_get_idx(roles, i));
+
+        if (i)
+            fputs(", ", stdout);
+
+        fputs(role ? role : "", stdout);
+    }
+
+    putchar('\n');
+}
+
+static void print_public_ids_full(json_object *entity, const char *indent)
+{
+    json_object *ids;
+
+    if (!json_object_object_get_ex(entity, "publicIds", &ids) ||
+        !json_object_is_type(ids, json_type_array) ||
+        json_object_array_length(ids) == 0)
+        return;
+
+    printf("%sPublic IDs:\n", indent);
+
+    for (size_t i = 0; i < json_object_array_length(ids); ++i) {
+        json_object *id = json_object_array_get_idx(ids, i);
+        const char *type = jstr(id, "type");
+        const char *identifier = jstr(id, "identifier");
+
+        printf("%s  %s%s%s\n",
+               indent,
+               type ? type : "ID",
+               identifier ? ": " : "",
+               identifier ? identifier : "");
+    }
+}
+
+static void print_remarks_full(json_object *obj, const char *indent)
+{
+    json_object *remarks;
+
+    if (!json_object_object_get_ex(obj, "remarks", &remarks) ||
+        !json_object_is_type(remarks, json_type_array) ||
+        json_object_array_length(remarks) == 0)
+        return;
+
+    printf("%sRemarks:\n", indent);
+
+    for (size_t i = 0; i < json_object_array_length(remarks); ++i) {
+        json_object *remark = json_object_array_get_idx(remarks, i);
+        json_object *desc;
+        const char *title = jstr(remark, "title");
+        const char *type = jstr(remark, "type");
+
+        printf("%s  %s\n", indent, title ? title : "Remark");
+
+        if (type)
+            printf("%s    Type: %s\n", indent, type);
+
+        if (json_object_object_get_ex(remark, "description", &desc) &&
+            json_object_is_type(desc, json_type_array)) {
+            for (size_t j = 0; j < json_object_array_length(desc); ++j) {
+                const char *line =
+                    json_object_get_string(json_object_array_get_idx(desc, j));
+
+                if (line)
+                    printf("%s    %s\n", indent, line);
+            }
+        }
+    }
+}
+
+static void print_jcard_full(json_object *entity, const char *indent)
+{
+    json_object *vcard;
+    json_object *props;
+
+    if (!json_object_object_get_ex(entity, "vcardArray", &vcard) ||
+        !json_object_is_type(vcard, json_type_array) ||
+        json_object_array_length(vcard) < 2)
+        return;
+
+    props = json_object_array_get_idx(vcard, 1);
+
+    if (!props || !json_object_is_type(props, json_type_array))
+        return;
+
+    for (size_t i = 0; i < json_object_array_length(props); ++i) {
+        json_object *prop = json_object_array_get_idx(props, i);
+        json_object *value;
+        const char *name;
+
+        if (!prop || !json_object_is_type(prop, json_type_array) ||
+            json_object_array_length(prop) < 4)
+            continue;
+
+        name = json_object_get_string(json_object_array_get_idx(prop, 0));
+        value = json_object_array_get_idx(prop, 3);
+
+        if (!name || !strcasecmp(name, "version"))
+            continue;
+
+        if (json_object_is_type(value, json_type_string)) {
+            const char *s = json_object_get_string(value);
+            const char *label = name;
+
+            if (!strcasecmp(name, "fn"))
+                label = "Name";
+            else if (!strcasecmp(name, "org"))
+                label = "Organization";
+            else if (!strcasecmp(name, "email"))
+                label = "Email";
+            else if (!strcasecmp(name, "tel"))
+                label = "Phone";
+            else if (!strcasecmp(name, "contact-uri"))
+                label = "Contact URI";
+
+            if (s && !strcasecmp(name, "tel") &&
+                !strncasecmp(s, "tel:", 4))
+                s += 4;
+
+            if (s && *s)
+                printf("%s%s: %s\n", indent, label, s);
+        } else if (!strcasecmp(name, "adr") &&
+                   json_object_is_type(value, json_type_array)) {
+            int first = 1;
+
+            printf("%sAddress: ", indent);
+
+            for (size_t j = 0; j < json_object_array_length(value); ++j) {
+                const char *part =
+                    json_object_get_string(json_object_array_get_idx(value, j));
+
+                if (!part || !*part)
+                    continue;
+
+                if (!first)
+                    fputs(", ", stdout);
+
+                fputs(part, stdout);
+                first = 0;
+            }
+
+            putchar('\n');
+        }
+    }
+}
+
+static void print_entity_full(json_object *entity, int depth)
+{
+    char indent[64];
+    char child_indent[64];
+    json_object *nested;
+    const char *handle = jstr(entity, "handle");
+    const char *port43 = jstr(entity, "port43");
+    const char *lang = jstr(entity, "lang");
+    size_t spaces = 2 + (size_t)depth * 2;
+
+    if (spaces >= sizeof(indent))
+        spaces = sizeof(indent) - 1;
+
+    memset(indent, ' ', spaces);
+    indent[spaces] = '\0';
+
+    spaces += 2;
+    if (spaces >= sizeof(child_indent))
+        spaces = sizeof(child_indent) - 1;
+
+    memset(child_indent, ' ', spaces);
+    child_indent[spaces] = '\0';
+
+    printf("%sEntity", indent);
+
+    if (handle)
+        printf(" [%s]", handle);
+
+    putchar('\n');
+
+    print_roles(entity, child_indent);
+
+    if (lang)
+        printf("%sLanguage: %s\n", child_indent, lang);
+
+    if (port43)
+        printf("%sPort 43: %s\n", child_indent, port43);
+
+    print_jcard_full(entity, child_indent);
+    print_public_ids_full(entity, child_indent);
+    print_remarks_full(entity, child_indent);
+
+    if (json_object_object_get_ex(entity, "entities", &nested) &&
+        json_object_is_type(nested, json_type_array)) {
+        for (size_t i = 0; i < json_object_array_length(nested); ++i)
+            print_entity_full(json_object_array_get_idx(nested, i), depth + 1);
+    }
+}
+
+static void print_entities_full(json_object *obj)
+{
+    json_object *entities;
+
+    if (!json_object_object_get_ex(obj, "entities", &entities) ||
+        !json_object_is_type(entities, json_type_array) ||
+        json_object_array_length(entities) == 0)
+        return;
+
+    puts("Entities:");
+
+    for (size_t i = 0; i < json_object_array_length(entities); ++i)
+        print_entity_full(json_object_array_get_idx(entities, i), 0);
+}
+
+static void print_nameserver_details(json_object *obj)
+{
+    json_object *arr;
+
+    if (!json_object_object_get_ex(obj, "nameservers", &arr) ||
+        !json_object_is_type(arr, json_type_array) ||
+        json_object_array_length(arr) == 0)
+        return;
+
+    puts("Nameserver Details:");
+
+    for (size_t i = 0; i < json_object_array_length(arr); ++i) {
+        json_object *ns = json_object_array_get_idx(arr, i);
+        json_object *status;
+        const char *name = jstr(ns, "ldhName");
+        const char *unicode = jstr(ns, "unicodeName");
+        const char *port43 = jstr(ns, "port43");
+
+        printf("  %s\n", name ? name : (unicode ? unicode : "(unnamed)"));
+
+        if (unicode && (!name || strcmp(unicode, name) != 0))
+            printf("    Unicode Name: %s\n", unicode);
+
+        if (port43)
+            printf("    Port 43: %s\n", port43);
+
+        if (json_object_object_get_ex(ns, "status", &status) &&
+            json_object_is_type(status, json_type_array) &&
+            json_object_array_length(status) > 0) {
+            fputs("    Status: ", stdout);
+
+            for (size_t j = 0; j < json_object_array_length(status); ++j) {
+                const char *s =
+                    json_object_get_string(json_object_array_get_idx(status, j));
+
+                if (j)
+                    fputs(", ", stdout);
+
+                fputs(s ? s : "", stdout);
+            }
+
+            putchar('\n');
+        }
+    }
+}
+
+static void print_conformance(json_object *obj)
+{
+    json_object *arr;
+
+    if (!json_object_object_get_ex(obj, "rdapConformance", &arr) ||
+        !json_object_is_type(arr, json_type_array) ||
+        json_object_array_length(arr) == 0)
+        return;
+
+    puts("RDAP Conformance:");
+
+    for (size_t i = 0; i < json_object_array_length(arr); ++i) {
+        const char *s =
+            json_object_get_string(json_object_array_get_idx(arr, i));
+
+        if (s)
+            printf("  %s\n", s);
+    }
+}
+
+static void print_full_details(json_object *obj)
+{
+    const char *lang = jstr(obj, "lang");
+    const char *port43 = jstr(obj, "port43");
+
+    if (lang)
+        printf("Language: %s\n", lang);
+
+    if (port43)
+        printf("Port 43: %s\n", port43);
+
+    print_conformance(obj);
+    print_remarks_full(obj, "");
+    print_nameserver_details(obj);
+    print_entities_full(obj);
+}
+
 static void print_summary(json_object *obj,
                           int include_notices,
-                          int include_links)
+                          int include_links,
+                          int full_output)
 {
     const char *kind = jstr(obj, "objectClassName");
     const char *handle = jstr(obj, "handle");
@@ -1035,6 +1346,9 @@ static void print_summary(json_object *obj,
     print_nameservers(obj);
     print_dnssec(obj);
 
+    if (full_output)
+        print_full_details(obj);
+
     if (include_notices)
         print_notices(obj);
 
@@ -1048,6 +1362,7 @@ int main(int argc, char **argv)
     int include_notices = 0;
     int include_links = 0;
     int follow_related = 0;
+    int full_output = 0;
     int server_only = 0;
     int verbose = 0;
     const char *query = NULL;
@@ -1082,6 +1397,11 @@ int main(int argc, char **argv)
         } else if (!strcmp(argv[i], "-f") ||
                    !strcmp(argv[i], "--follow")) {
             follow_related = 1;
+        } else if (!strcmp(argv[i], "-F") ||
+                   !strcmp(argv[i], "--full")) {
+            full_output = 1;
+            include_notices = 1;
+            include_links = 1;
         } else if (!strcmp(argv[i], "-v") ||
                    !strcmp(argv[i], "--verbose")) {
             verbose = 1;
@@ -1295,13 +1615,14 @@ int main(int argc, char **argv)
                 JSON_C_TO_STRING_NOSLASHESCAPE));
         }
     } else {
-        print_summary(answer, include_notices, include_links);
+        print_summary(answer, include_notices, include_links, full_output);
 
         if (follow_related && related_answer) {
             puts("\nRegistrar RDAP:");
             print_summary(related_answer,
                           include_notices,
-                          include_links);
+                          include_links,
+                          full_output);
         }
     }
 
@@ -1320,4 +1641,5 @@ done:
     curl_global_cleanup();
     return rc;
 }
+
 
