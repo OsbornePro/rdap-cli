@@ -10,12 +10,12 @@ echo "Testing domain..."
 "$RDAP" example.com >/dev/null
 
 echo "Testing IPv4..."
-"$RDAP" 8.8.8.8 >/dev/null
+"$RDAP" 1.1.1.1 >/dev/null
 
 echo "Testing IPv6..."
-"$RDAP" 2001:4860:4860::8888 >/dev/null
+"$RDAP" 2606:4700:4700::1111 >/dev/null
 
 echo "Testing ASN..."
-"$RDAP" AS15169 >/dev/null
+"$RDAP" AS13335 >/dev/null
 
 echo "All smoke tests passed."
