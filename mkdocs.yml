@@ -1,0 +1,27 @@
+site_name: rdap-cli
+site_description: A lightweight RDAP-only command-line client written in C
+site_author: OsbornePro
+
+repo_name: OsbornePro/rdap-cli
+repo_url: https://github.com/OsbornePro/rdap-cli
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - Examples: examples.md
+  - Output: output.md
+  - Security: security.md
+  - Development: development.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
