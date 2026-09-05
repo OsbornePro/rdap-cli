@@ -116,7 +116,7 @@ After a successful build, the `rdap` executable will be created in the project d
 
 Move it to /usr/local/bin/rdap if you wish to execute it easily in the future:
 ```sh
-cp rdap /usr/local/bin/rdap
+sudo cp rdap /usr/local/bin/rdap
 ```
 
 Now you can use it like this:
