@@ -51,7 +51,7 @@ rdap --verbose osbornepro.com
 sudo apt install -y build-essential pkg-config libcurl4-openssl-dev libjson-c-dev
 ```
 
-### Fedora
+### Fedora / RHEL 10
 
 ```sh
 sudo dnf install -y gcc make pkgconf-pkg-config libcurl-devel json-c-devel
