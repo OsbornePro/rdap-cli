@@ -17,7 +17,11 @@ Please **do not** report suspected security vulnerabilities through a public Git
 
 Use GitHub's private vulnerability reporting feature for this repository if it is enabled.
 
-If private vulnerability reporting is unavailable, contact the repository maintainer privately using the contact information listed on their GitHub profile.
+Security contact information is also published through the OsbornePro `security.txt` file:
+
+https://osbornepro.com/.well-known/security.txt
+
+Please use one of the private contact methods listed there if GitHub private vulnerability reporting is unavailable.
 
 When submitting a report, please include as much of the following information as possible:
 
@@ -31,7 +35,7 @@ When submitting a report, please include as much of the following information as
 - crash output, debugger output, or sanitizer output, if available
 - the potential security impact
 
-Please allow reasonable time for the issue to be investigated and corrected before publicly disclosing the vulnerability.
+Please allow reasonable time for the issue to be investigated and corrected before publicly disclosing the vulnerability. 
 
 ## Security Scope
 
