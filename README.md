@@ -71,14 +71,55 @@ brew install curl json-c pkg-config
 
 ## Build
 
+Build the project with:
+
 ```sh
 make
 ```
 
+### Clock Skew Warning
+
+If `make` reports a warning similar to:
+
+```text
+make: Warning: File 'Makefile' has modification time 21208 s in the future
+make: warning: Clock skew detected. Your build may be incomplete.
+```
+
+This means one or more project files have modification timestamps that are ahead of your system's current time. 
+This can happen after downloading, extracting, copying, or transferring the repository between systems.
+  
+To reset the modification timestamps and rebuild the project, run:
+
+```sh
+find . -exec touch {} +
+make clean
+make
+```
+
+If the warning continues, verify that your system clock is correct and synchronized:
+
+```sh
+timedatectl
+```
+
+On systems using `systemd`, automatic network time synchronization can be enabled with:
+
+```sh
+sudo timedatectl set-ntp true
+```
+
+After a successful build, the `rdap` executable will be created in the project directory:
+
+```sh
+./rdap osbornepro.com
+```
+
+
 Run:
 
 ```sh
-./rdap example.com
+./rdap osbornepro.com
 ```
 
 ## Install
