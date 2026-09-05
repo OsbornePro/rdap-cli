@@ -109,17 +109,19 @@ On systems using `systemd`, automatic network time synchronization can be enable
 sudo timedatectl set-ntp true
 ```
 
-After a successful build, the `rdap` executable will be created in the project directory:
-
+After a successful build, the `rdap` executable will be created in the project directory and can be executed by doing:
 ```sh
 ./rdap osbornepro.com
 ```
 
-
-Run:
-
+Move it to /usr/local/bin/rdap if you wish to execute it easily in the future:
 ```sh
-./rdap osbornepro.com
+cp rdap /usr/local/bin/rdap
+```
+
+Now you can use it like this:
+```sh
+rdap osbornepro.com
 ```
 
 ## Install
