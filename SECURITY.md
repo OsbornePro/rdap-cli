@@ -21,7 +21,9 @@ Security contact information is also published through the OsbornePro `security.
 
 https://osbornepro.com/.well-known/security.txt
 
-Please use one of the private contact methods listed there if GitHub private vulnerability reporting is unavailable.
+The `security.txt` file includes the preferred contact address, PGP encryption key, disclosure policy, acknowledgments page, and other security-reporting information.
+
+If GitHub private vulnerability reporting is unavailable, please use one of the contact methods listed in `security.txt`.
 
 When submitting a report, please include as much of the following information as possible:
 
@@ -149,6 +151,8 @@ RDAP queries are sent to remote RDAP services over HTTPS.
 Users should understand that the remote service can observe information necessary to process the request, including the requested domain name, IP address, or ASN, as well as network information normally visible to an HTTPS server.
 
 `rdap-cli` does not provide anonymity.
+
+Encrypted vulnerability reports are welcome using the public key referenced in the OsbornePro `security.txt` file.
 
 ## Security Design Goals
 
