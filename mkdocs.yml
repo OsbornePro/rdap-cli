@@ -1,7 +1,7 @@
 site_name: rdap-cli
 site_description: A lightweight RDAP-only command-line client written in C
 site_author: OsbornePro
-site_url: https://rdap-cli.readthedocs.io/
+site_url: https://rdap-cli.osbornepro.com/
 
 repo_name: OsbornePro/rdap-cli
 repo_url: https://github.com/OsbornePro/rdap-cli
